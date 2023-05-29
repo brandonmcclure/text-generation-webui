@@ -190,11 +190,19 @@ def get_single_file(url, output_folder, start_from_scratch=False):
                 f.write(data)
 
 
-def start_download_threads(file_list, output_folder, start_from_scratch=False, threads=1):
+def start_download_threads(file_list, output_folder,ignorePatterns='.+?q8.+|.+?q5_1.+|.+?q5_0.+|.+?q4_1.+', start_from_scratch=False, threads=1):
+    print(f'full download file list: {file_list}')
+    pattern = re.compile(ignorePatterns)
+    
+    for f in file_list:
+        if pattern.match(f):
+            print(f'removing {f}')
+            file_list.remove(f)
+    print(f'filtered download file list: {file_list}')
     thread_map(lambda url: get_single_file(url, output_folder, start_from_scratch=start_from_scratch), file_list, max_workers=threads, disable=True)
 
 
-def download_model_files(model, branch, links, sha256, output_folder, start_from_scratch=False, threads=1):
+def download_model_files(model, branch, links, sha256, output_folder, ignorePatterns='.+?q8.+|.+?q5_1.+|.+?q5_0.+|.+?q4_1.+', start_from_scratch=False, threads=1):
     # Creating the folder and writing the metadata
     if not output_folder.exists():
         output_folder.mkdir()
@@ -210,7 +218,7 @@ def download_model_files(model, branch, links, sha256, output_folder, start_from
 
     # Downloading the files
     print(f"Downloading the model to {output_folder}")
-    start_download_threads(links, output_folder, start_from_scratch=start_from_scratch, threads=threads)
+    start_download_threads(links, output_folder, start_from_scratch=start_from_scratch, threads=threads,ignorePatterns=ignorePatterns)
 
 
 def check_model_files(model, branch, links, sha256, output_folder):
@@ -249,6 +257,7 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=str, default=None, help='The folder where the model should be saved.')
     parser.add_argument('--clean', action='store_true', help='Does not resume the previous download.')
     parser.add_argument('--check', action='store_true', help='Validates the checksums of model files.')
+    parser.add_argument('--file_exclude_regex', action='store_true', help='Regex pattern to exclude files from download', default='.+?q8.+|.+?q5_1.+|.+?q5_0.+|.+?q4_1.+')
     args = parser.parse_args()
 
     branch = args.branch
@@ -262,7 +271,7 @@ if __name__ == '__main__':
     except ValueError as err_branch:
         print(f"Error: {err_branch}")
         sys.exit()
-
+    ignorePatterns = args.file_exclude_regex
     # Getting the download links from Hugging Face
     links, sha256, is_lora = get_download_links_from_huggingface(model, branch, text_only=args.text_only)
 
@@ -274,4 +283,4 @@ if __name__ == '__main__':
         check_model_files(model, branch, links, sha256, output_folder)
     else:
         # Download files
-        download_model_files(model, branch, links, sha256, output_folder, threads=args.threads)
+        download_model_files(model, branch, links, sha256, output_folder,ignorePatterns, threads=args.threads)
