@@ -11,7 +11,7 @@ Its goal is to become the [AUTOMATIC1111/stable-diffusion-webui](https://github.
 ## Features
 
 * 3 interface modes: default, notebook, and chat
-* Multiple model backends: tranformers, llama.cpp, AutoGPTQ, GPTQ-for-LLaMa, RWKV, FlexGen
+* Multiple model backends: tranformers, llama.cpp, AutoGPTQ, GPTQ-for-LLaMa, ExLlama, RWKV, FlexGen
 * Dropdown menu for quickly switching between different models
 * LoRA: load and unload LoRAs on the fly, load multiple LoRAs at the same time, train a new LoRA
 * Precise instruction templates for chat mode, including Alpaca, Vicuna, Open Assistant, Dolly, Koala, ChatGLM, MOSS, RWKV-Raven, Galactica, StableLM, WizardLM, Baize, Ziya, Chinese-Vicuna, MPT, INCITE, Wizard Mega, KoAlpaca, Vigogne, Bactrian, h2o, and OpenBuddy
@@ -204,6 +204,12 @@ Optionally, you can use the following command-line flags:
 | `--extensions EXTENSIONS [EXTENSIONS ...]` | The list of extensions to load. If you want to load more than one extension, write the names separated by spaces. |
 | `--verbose`                                | Print the prompts to the terminal. |
 
+#### Model loader
+
+| Flag                                       | Description |
+|--------------------------------------------|-------------|
+| `--loader LOADER`                          | Choose the model loader manually, otherwise, it will get autodetected. Valid options: transformers, autogptq, gptq-for-llama, exllama, exllama_hf, llamacpp, rwkv, flexgen |
+
 #### Accelerate/transformers
 
 | Flag                                        | Description |
@@ -249,14 +255,24 @@ Optionally, you can use the following command-line flags:
 
 | Flag             | Description |
 |------------------|-------------|
-| `--triton`       | Use triton. |
-| `--desc_act`     | For models that don't have a quantize_config.json, this parameter is used to define whether to set desc_act or not in BaseQuantizeConfig. |
+| `--triton`                     | Use triton. |
+| `--no_inject_fused_attention`  | Disable the use of fused attention, which will use less VRAM at the cost of slower inference. |
+| `--no_inject_fused_mlp`        | Triton mode only: disable the use of fused MLP, which will use less VRAM at the cost of slower inference. |
+| `--no_use_cuda_fp16`           | This can make models faster on some systems. |
+| `--desc_act`                   | For models that don't have a quantize_config.json, this parameter is used to define whether to set desc_act or not in BaseQuantizeConfig. |
+
+#### ExLlama
+
+| Flag             | Description |
+|------------------|-------------|
+|`--gpu-split`     | Comma-separated list of VRAM (in GB) to use per GPU device for model layers, e.g. `20,7,7` |
+|`--max_seq_len MAX_SEQ_LEN`           | Maximum sequence length. |
+|`--compress_pos_emb COMPRESS_POS_EMB` | Positional embeddings compression factor. Should typically be set to max_seq_len / 2048. |
 
 #### GPTQ-for-LLaMa
 
 | Flag                      | Description |
 |---------------------------|-------------|
-| `--gptq-for-llama` | Use GPTQ-for-LLaMa to load the GPTQ model instead of AutoGPTQ. |
 | `--wbits WBITS`           | Load a pre-quantized model with specified precision in bits. 2, 3, 4 and 8 are supported. |
 | `--model_type MODEL_TYPE` | Model type of pre-quantized model. Currently LLaMA, OPT, and GPT-J are supported. |
 | `--groupsize GROUPSIZE`   | Group size. |
@@ -271,7 +287,6 @@ Optionally, you can use the following command-line flags:
 
 | Flag             | Description |
 |------------------|-------------|
-| `--flexgen`                       | Enable the use of FlexGen offloading. |
 | `--percent PERCENT [PERCENT ...]` | FlexGen: allocation percentages. Must be 6 numbers separated by spaces (default: 0, 100, 100, 0, 100, 0). |
 | `--compress-weight`               | FlexGen: Whether to compress weight (default: False).|
 | `--pin-weight [PIN_WEIGHT]`       | FlexGen: whether to pin weights (setting this to False reduces CPU memory by 20%). |
@@ -324,7 +339,7 @@ Out of memory errors? [Check the low VRAM guide](docs/Low-VRAM-guide.md).
 
 Inference settings presets can be created under `presets/` as yaml files. These files are detected automatically at startup.
 
-By default, 10 presets based on NovelAI and KoboldAI presets are included. These were selected out of a sample of 43 presets after applying a K-Means clustering algorithm and selecting the elements closest to the average of each cluster: [tSNE visualization](https://user-images.githubusercontent.com/112222186/228956352-1addbdb9-2456-465a-b51d-089f462cd385.png).
+The presets that are included by default are the result of a contest that received 7215 votes. More details can be found [here](https://github.com/oobabooga/oobabooga.github.io/blob/main/arena/results.md).
 
 ## Contributing
 
@@ -333,8 +348,13 @@ By default, 10 presets based on NovelAI and KoboldAI presets are included. These
 * If you have some experience with git, testing an open pull request and leaving a comment on whether it works as expected or not is immensely helpful.
 * A simple way to contribute, even if you are not a programmer, is to leave a 👍 on an issue or pull request that you find relevant.
 
+## Community
+
+* Subreddit: https://www.reddit.com/r/oobaboogazz/
+* Discord: https://discord.gg/jwZCF2dPQN
+
 ## Credits
 
 - Gradio dropdown menu refresh button, code for reloading the interface: https://github.com/AUTOMATIC1111/stable-diffusion-webui
-- NovelAI and KoboldAI presets: https://github.com/KoboldAI/KoboldAI-Client/wiki/Settings-Presets
-- Code for early stopping in chat mode, code for some of the sliders: https://github.com/PygmalionAI/gradio-ui/
+- Godlike preset: https://github.com/KoboldAI/KoboldAI-Client/wiki/Settings-Presets
+- Code for some of the sliders: https://github.com/PygmalionAI/gradio-ui/
