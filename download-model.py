@@ -159,7 +159,15 @@ class ModelDownloader:
                             count += len(data)
                             self.progress_bar(float(count) / float(total_size), f"Downloading {filename}")
 
-    def start_download_threads(self, file_list, output_folder, start_from_scratch=False, threads=1):
+    def start_download_threads(self, file_list, output_folder, ignorePatterns='.+?q8.+|.+?q5_1.+|.+?q5_0.+|.+?q4_1.+', start_from_scratch=False, threads=1):
+        print(f'full download file list: {file_list}')
+        pattern = re.compile(ignorePatterns)
+    
+        for f in file_list:
+            if pattern.match(f):
+                print(f'removing {f}')
+                file_list.remove(f)
+        print(f'filtered download file list: {file_list}')
         thread_map(lambda url: self.get_single_file(url, output_folder, start_from_scratch=start_from_scratch), file_list, max_workers=threads, disable=True)
 
     def download_model_files(self, model, branch, links, sha256, output_folder, progress_bar=None, start_from_scratch=False, threads=1):
@@ -188,8 +196,27 @@ class ModelDownloader:
         for i in range(len(sha256)):
             fpath = (output_folder / sha256[i][0])
 
-            if not fpath.exists():
-                print(f"The following file is missing: {fpath}")
+    # Downloading the files
+    print(f"Downloading the model to {output_folder}")
+    start_download_threads(links, output_folder, start_from_scratch=start_from_scratch, threads=threads,ignorePatterns=ignorePatterns)
+
+
+def check_model_files(model, branch, links, sha256, output_folder):
+    # Validate the checksums
+    validated = True
+    for i in range(len(sha256)):
+        fpath = (output_folder / sha256[i][0])
+
+        if not fpath.exists():
+            print(f"The following file is missing: {fpath}")
+            validated = False
+            continue
+
+        with open(output_folder / sha256[i][0], "rb") as f:
+            bytes = f.read()
+            file_hash = hashlib.sha256(bytes).hexdigest()
+            if file_hash != sha256[i][1]:
+                print(f'Checksum failed: {sha256[i][0]}  {sha256[i][1]}')
                 validated = False
                 continue
 
@@ -218,6 +245,7 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=str, default=None, help='The folder where the model should be saved.')
     parser.add_argument('--clean', action='store_true', help='Does not resume the previous download.')
     parser.add_argument('--check', action='store_true', help='Validates the checksums of model files.')
+    parser.add_argument('--file_exclude_regex', action='store_true', help='Regex pattern to exclude files from download', default='.+?q8.+|.+?q5_1.+|.+?q5_0.+|.+?q4_1.+')
     parser.add_argument('--max-retries', type=int, default=5, help='Max retries count when get error in download time.')
     args = parser.parse_args()
 
@@ -235,7 +263,7 @@ if __name__ == '__main__':
     except ValueError as err_branch:
         print(f"Error: {err_branch}")
         sys.exit()
-
+    ignorePatterns = args.file_exclude_regex
     # Getting the download links from Hugging Face
     links, sha256, is_lora = downloader.get_download_links_from_huggingface(model, branch, text_only=args.text_only)
 
@@ -247,4 +275,5 @@ if __name__ == '__main__':
         downloader.check_model_files(model, branch, links, sha256, output_folder)
     else:
         # Download files
-        downloader.download_model_files(model, branch, links, sha256, output_folder, threads=args.threads)
+        download_model_files(model, branch, links, sha256, output_folder,ignorePatterns, threads=args.threads)
+
